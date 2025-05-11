@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NSE Live Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f4f4;
+      color: #333;
+    }
+    header {
+      background-color: #111;
+      color: #fff;
+      padding: 1rem;
+      text-align: center;
+    }
+    .widget-container {
+      margin: 1rem auto;
+      max-width: 900px;
+      padding: 1rem;
+      background: #fff;
+      border-radius: 8px;
+    }
+    iframe {
+      width: 100%;
+      height: 500px;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📈 NSE Live Tracker</h1>
+    <p>Real-time charts & updates for Nifty, Bank Nifty & more</p>
+  </header>
+
+  <div class="widget-container">
+    <h2>🔵 Nifty 50 Live Chart</h2>
+    <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_9e7f1&symbol=NSE:NIFTY&interval=1&theme=light&style=1&timezone=Asia%2FKolkata&withdateranges=1&studies=[]&hide_side_toolbar=false&allow_symbol_change=true&save_image=true&toolbar_bg=F1F3F6&locale=en" allowfullscreen></iframe>
+  </div>
+
+  <div class="widget-container">
+    <h2>🔴 Bank Nifty Live Chart</h2>
+    <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview_a7e3b&symbol=NSE:BANKNIFTY&interval=1&theme=light&style=1&timezone=Asia%2FKolkata&withdateranges=1&studies=[]&hide_side_toolbar=false&allow_symbol_change=true&save_image=true&toolbar_bg=F1F3F6&locale=en" allowfullscreen></iframe>
+  </div>
+
+  <div class="widget-container">
+    <h2>📊 Watchlist Ticker</h2>
+    <iframe src="https://s.tradingview.com/embed-widget/ticker-tape/?locale=en#%7B%22symbols%22%3A%5B%7B%22proName%22%3A%22NSE%3ARELIANCE%22%2C%22title%22%3A%22Reliance%22%7D%2C%7B%22proName%22%3A%22NSE%3ATCS%22%2C%22title%22%3A%22TCS%22%7D%2C%7B%22proName%22%3A%22NSE%3AHDFCBANK%22%2C%22title%22%3A%22HDFC Bank%22%7D%5D%2C%22colorTheme%22%3A%22light%22%2C%22isTransparent%22%3Afalse%2C%22displayMode%22%3A%22regular%22%2C%22width%22%3A%22100%25%22%2C%22height%22%3A30%2C%22locale%22%3A%22en%22%7D" frameborder="0" height="30"></iframe>
+  </div>
+</body>
+</html>
