@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NSE 100+ Stock Tracker</title>
+  <title>NSE Stock Tracker with 52-Week Range</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
@@ -9,6 +9,7 @@
       --up-color: #0d9e0d;
       --down-color: #e53935;
       --neutral-color: #7f8c8d;
+      --range-bg: #f0f0f0;
     }
     body {
       font-family: 'Segoe UI', Roboto, sans-serif;
@@ -59,11 +60,9 @@
       margin-bottom: 8px;
       border-radius: 6px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      transition: transform 0.2s;
     }
-    .stock:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    .stock-info {
+      flex: 1;
     }
     .stock-name {
       font-weight: 500;
@@ -74,11 +73,13 @@
       color: var(--neutral-color);
       margin-top: 2px;
     }
-    .price {
+    .price-data {
       text-align: right;
+      margin-left: 15px;
     }
     .current-price {
       font-weight: 600;
+      font-size: 1.1rem;
     }
     .price-up {
       color: var(--up-color);
@@ -88,7 +89,31 @@
     }
     .price-change {
       font-size: 0.85rem;
-      margin-top: 2px;
+      margin-top: 3px;
+    }
+    .week-range {
+      display: flex;
+      align-items: center;
+      margin-top: 5px;
+      font-size: 0.8rem;
+    }
+    .range-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--range-bg);
+      border-radius: 3px;
+      margin: 0 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .range-progress {
+      position: absolute;
+      height: 100%;
+      background: linear-gradient(90deg, var(--down-color), var(--up-color));
+    }
+    .range-value {
+      min-width: 40px;
+      text-align: center;
     }
     .loading {
       opacity: 0.6;
@@ -106,14 +131,23 @@
     }
     @media (max-width: 600px) {
       .stock {
-        padding: 10px 12px;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .price-data {
+        width: 100%;
+        text-align: left;
+        margin-top: 8px;
+        margin-left: 0;
+        border-top: 1px solid #eee;
+        padding-top: 8px;
       }
     }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>NSE 100+ Stock Tracker</h1>
+    <h1>NSE Stocks with 52-Week Range</h1>
     <div class="controls">
       <input type="text" id="search" placeholder="Search stocks...">
       <button class="refresh-btn" id="refreshBtn">Refresh</button>
@@ -123,31 +157,25 @@
   <div class="stocks-container" id="stocksContainer"></div>
 
   <script>
-    // Nifty 100 stocks (can be expanded to 500+)
+    // Nifty 50 stocks (expandable to 100+)
     const symbols = [
-      'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 'ICICIBANK', 
-      'KOTAKBANK', 'BHARTIARTL', 'LT', 'ITC', 'SBIN', 'BAJFINANCE', 
-      'HCLTECH', 'ASIANPAINT', 'MARUTI', 'TITAN', 'SUNPHARMA', 'AXISBANK',
-      'NESTLEIND', 'ULTRACEMCO', 'WIPRO', 'ONGC', 'JSWSTEEL', 'TATASTEEL',
-      'POWERGRID', 'NTPC', 'INDUSINDBK', 'COALINDIA', 'BPCL', 'IOC',
-      'GRASIM', 'HDFCLIFE', 'DRREDDY', 'SHREECEM', 'UPL', 'BAJAJFINSV',
-      'ADANIPORTS', 'TECHM', 'HEROMOTOCO', 'DIVISLAB', 'CIPLA', 'EICHERMOT',
-      'BRITANNIA', 'VEDL', 'HDFC', 'SBILIFE', 'GAIL', 'BAJAJ-AUTO', 'TATAMOTORS',
-      'M&M', 'ADANIENT', 'TATACONSUM', 'HAL', 'APOLLOHOSP', 'PAGEIND',
-      'BERGEPAINT', 'PIDILITIND', 'DABUR', 'HAVELLS', 'ICICIPRULI', 'BOSCHLTD',
-      'MARICO', 'INDIGO', 'BHARATFORG', 'MCDOWELL-N', 'SIEMENS', 'AUROPHARMA',
-      'TORNTPHARM', 'AMBUJACEM', 'NAUKRI', 'ACC', 'ASHOKLEY', 'BEL',
-      'PEL', 'LUPIN', 'BIOCON', 'GODREJCP', 'CADILAHC', 'COLPAL',
-      'DLF', 'SRF', 'ESCORTS', 'GLENMARK', 'GODREJPROP', 'IDEA', 'IGL',
-      'JINDALSTEL', 'LICHSGFIN', 'MANAPPURAM', 'MRF', 'OFSS', 'PETRONET',
-      'SAIL', 'SHREECEM', 'TORNTPOWER', 'TVSMOTOR', 'VOLTAS', 'ZEEL'
+      'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 
+      'ICICIBANK', 'KOTAKBANK', 'BHARTIARTL', 'LT', 'ITC',
+      'SBIN', 'BAJFINANCE', 'HCLTECH', 'ASIANPAINT', 'MARUTI',
+      'TITAN', 'SUNPHARMA', 'AXISBANK', 'NESTLEIND', 'ULTRACEMCO',
+      'WIPRO', 'ONGC', 'JSWSTEEL', 'TATASTEEL', 'POWERGRID',
+      'NTPC', 'INDUSINDBK', 'COALINDIA', 'BPCL', 'IOC',
+      'GRASIM', 'HDFCLIFE', 'DRREDDY', 'SHREECEM', 'UPL',
+      'BAJAJFINSV', 'ADANIPORTS', 'TECHM', 'HEROMOTOCO', 'DIVISLAB',
+      'CIPLA', 'EICHERMOT', 'BRITANNIA', 'VEDL', 'HDFC',
+      'SBILIFE', 'GAIL', 'BAJAJ-AUTO', 'TATAMOTORS', 'M&M'
     ];
 
     // Configuration
     const config = {
-      batchSize: 15,          // Number of stocks per batch
-      delayBetweenBatches: 1000, // 1 second between batches
-      fullRefreshInterval: 300000 // 5 minutes for full refresh
+      batchSize: 10,
+      delayBetweenBatches: 1000,
+      fullRefreshInterval: 300000 // 5 minutes
     };
 
     // State management
@@ -198,6 +226,13 @@
       return change > 0 ? 'price-up' : 'price-down';
     }
 
+    function calculateRangePosition(current, low, high) {
+      if (!current || !low || !high) return 50;
+      const range = high - low;
+      const position = ((current - low) / range) * 100;
+      return Math.min(100, Math.max(0, position));
+    }
+
     // Data fetching
     async function fetchStockData(symbol) {
       try {
@@ -221,12 +256,18 @@
         const change = lastPrice - prevClose;
         const changePercent = (change / prevClose) * 100;
         
+        // 52-week range data
+        const week52High = stockData.priceInfo?.high52Week || 0;
+        const week52Low = stockData.priceInfo?.low52Week || 0;
+        
         return {
           symbol,
           name: stockData.info?.companyName || symbol,
           price: lastPrice,
           change,
           changePercent,
+          week52High,
+          week52Low,
           timestamp: Date.now()
         };
       } catch (error) {
@@ -240,7 +281,7 @@
       }
     }
 
-    // Batch processing
+    // Batch processing (same as before)
     async function fetchNextBatch() {
       if (state.isFetching) return;
       state.isFetching = true;
@@ -250,7 +291,6 @@
       const batchSymbols = symbols.slice(batchStart, batchEnd);
       
       if (batchSymbols.length === 0) {
-        // Reset when all batches complete
         state.currentBatch = 0;
         state.isFetching = false;
         state.lastUpdated = Date.now();
@@ -264,15 +304,12 @@
           batchSymbols.map(symbol => fetchStockData(symbol))
         );
 
-        // Update state
         batchResults.forEach(stock => {
           state.stocksData[stock.symbol] = stock;
         });
 
-        // Update UI
         filterStocks();
         
-        // Process next batch after delay
         state.currentBatch++;
         setTimeout(() => {
           state.isFetching = false;
@@ -284,7 +321,60 @@
       }
     }
 
-    // UI rendering
+    // Enhanced UI rendering with 52-week range
+    function renderStocks() {
+      elements.container.innerHTML = state.visibleStocks
+        .map(stock => {
+          if (stock.error) {
+            return `
+              <div class="stock error">
+                <div class="stock-info">
+                  <div class="stock-name">${stock.name}</div>
+                  <div class="stock-symbol">${stock.symbol}</div>
+                </div>
+                <div>Failed to load</div>
+              </div>
+            `;
+          }
+          
+          const changeClass = getChangeClass(stock.change);
+          const rangePosition = calculateRangePosition(
+            stock.price, 
+            stock.week52Low, 
+            stock.week52High
+          );
+          
+          return `
+            <div class="stock">
+              <div class="stock-info">
+                <div class="stock-name">${stock.name}</div>
+                <div class="stock-symbol">${stock.symbol}</div>
+                
+                <div class="week-range">
+                  <span class="range-value">${formatPrice(stock.week52Low)}</span>
+                  <div class="range-bar">
+                    <div class="range-progress" style="width: ${rangePosition}%"></div>
+                  </div>
+                  <span class="range-value">${formatPrice(stock.week52High)}</span>
+                </div>
+              </div>
+              
+              <div class="price-data">
+                <div class="current-price ${changeClass}">
+                  ${formatPrice(stock.price)}
+                </div>
+                <div class="price-change ${changeClass}">
+                  Today: ${formatChange(stock.change, stock.changePercent)}
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    // Rest of the code remains the same (filterStocks, updateLastUpdatedDisplay, 
+    // saveToCache, loadFromCache, manualRefresh, startAutoRefresh)
     function filterStocks() {
       const searchTerm = elements.search.value.toLowerCase();
       state.visibleStocks = Object.values(state.stocksData)
@@ -296,50 +386,12 @@
       renderStocks();
     }
 
-    function renderStocks() {
-      elements.container.innerHTML = state.visibleStocks
-        .map(stock => {
-          if (stock.error) {
-            return `
-              <div class="stock error">
-                <div>
-                  <div class="stock-name">${stock.name}</div>
-                  <div class="stock-symbol">${stock.symbol}</div>
-                </div>
-                <div>Failed to load</div>
-              </div>
-            `;
-          }
-          
-          const changeClass = getChangeClass(stock.change);
-          
-          return `
-            <div class="stock">
-              <div>
-                <div class="stock-name">${stock.name}</div>
-                <div class="stock-symbol">${stock.symbol}</div>
-              </div>
-              <div class="price">
-                <div class="current-price ${changeClass}">
-                  ${formatPrice(stock.price)}
-                </div>
-                <div class="price-change ${changeClass}">
-                  ${formatChange(stock.change, stock.changePercent)}
-                </div>
-              </div>
-            </div>
-          `;
-        })
-        .join('');
-    }
-
     function updateLastUpdatedDisplay() {
       if (!state.lastUpdated) return;
       const date = new Date(state.lastUpdated);
       elements.lastUpdated.textContent = `Last updated: ${date.toLocaleTimeString()}`;
     }
 
-    // Cache management
     function saveToCache() {
       localStorage.setItem('nseStocksCache', JSON.stringify({
         data: state.stocksData,
@@ -353,7 +405,6 @@
       
       try {
         const parsed = JSON.parse(cache);
-        // Only use cache if less than 1 hour old
         if (Date.now() - parsed.timestamp < 3600000) {
           state.stocksData = parsed.data;
           filterStocks();
@@ -363,14 +414,12 @@
       }
     }
 
-    // Refresh controls
     function manualRefresh() {
       state.currentBatch = 0;
       fetchNextBatch();
     }
 
     function startAutoRefresh() {
-      // Full refresh all stocks periodically
       setInterval(() => {
         state.currentBatch = 0;
         fetchNextBatch();
