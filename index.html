@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -5,36 +6,97 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
-    h1 { color: #333; }
-    .stock { margin: 10px 0; padding: 10px; background: white; border-radius: 8px; }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; max-width: 600px; margin: 0 auto; }
+    h1 { color: #333; text-align: center; }
+    .stock { 
+      margin: 10px 0; 
+      padding: 15px; 
+      background: white; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+    }
+    .price-up { color: #0d9e0d; }
+    .price-down { color: #e53935; }
+    .loading { opacity: 0.6; }
+    .refresh-info { 
+      text-align: center; 
+      color: #666; 
+      font-size: 0.9em;
+      margin: 20px 0;
+    }
   </style>
 </head>
 <body>
   <h1>NSE Live Prices</h1>
   <div id="stocks"></div>
+  <div class="refresh-info">Auto-refreshing every 10 seconds...</div>
 
   <script>
-    const symbols = ['RELIANCE', 'TCS', 'INFY'];
+    const symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'BHARTIARTL'];
     const container = document.getElementById('stocks');
+    let previousPrices = {};
 
-    async function fetchPrices() {
-      container.innerHTML = '';
-      for (let symbol of symbols) {
-        try {
-          const res = await fetch(`https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=1&from=0&to=9999999999`);
-          const data = await res.json();
-          const prices = data.c;
-          const lastPrice = prices[prices.length - 1];
-          container.innerHTML += `<div class="stock"><strong>${symbol}</strong>: ₹${lastPrice}</div>`;
-        } catch (e) {
-          container.innerHTML += `<div class="stock">${symbol}: Failed to load</div>`;
-        }
+    function formatPrice(price) {
+      return price ? '₹' + price.toFixed(2) : 'N/A';
+    }
+
+    function getPriceChangeClass(current, previous) {
+      if (!previous || current === previous) return '';
+      return current > previous ? 'price-up' : 'price-down';
+    }
+
+    async function fetchStockData(symbol) {
+      try {
+        // Note: This is just a placeholder - you'll need a proper NSE API
+        const res = await fetch(`https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=1&from=0&to=9999999999`);
+        if (!res.ok) throw new Error('API request failed');
+        
+        const data = await res.json();
+        const prices = data.c;
+        const lastPrice = prices[prices.length - 1];
+        
+        return {
+          symbol,
+          price: lastPrice,
+          change: previousPrices[symbol] ? lastPrice - previousPrices[symbol] : 0,
+          changePercent: previousPrices[symbol] ? ((lastPrice - previousPrices[symbol]) / previousPrices[symbol] * 100) : 0
+        };
+      } catch (e) {
+        console.error(`Error fetching ${symbol}:`, e);
+        return { symbol, error: true };
       }
     }
 
+    async function fetchPrices() {
+      const stocks = await Promise.all(symbols.map(fetchStockData));
+      
+      container.innerHTML = stocks.map(stock => {
+        if (stock.error) {
+          return `<div class="stock"><strong>${stock.symbol}</strong>: Error loading data</div>`;
+        }
+        
+        const changeClass = getPriceChangeClass(stock.price, previousPrices[stock.symbol]);
+        previousPrices[stock.symbol] = stock.price;
+        
+        return `
+          <div class="stock">
+            <strong>${stock.symbol}</strong>
+            <div class="${changeClass}">
+              ${formatPrice(stock.price)}
+              ${stock.change ? ` (${stock.change > 0 ? '+' : ''}${stock.change.toFixed(2)})` : ''}
+              ${stock.changePercent ? ` (${stock.changePercent > 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%)` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Initial load
     fetchPrices();
-    setInterval(fetchPrices, 10000); // auto refresh every 10s
+    // Auto-refresh
+    setInterval(fetchPrices, 10000);
   </script>
 </body>
 </html>
