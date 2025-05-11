@@ -1,10 +1,40 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>NSE Live Tracker</title>
-  </head>
-  <body>
-    <h1 style="text-align:center; color:green;">🚀 NSE Live Tracker Coming Soon</h1>
-    <p style="text-align:center;">This page is working!</p>
-  </body>
+<head>
+  <title>NSE Live Tracker</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    h1 { color: #333; }
+    .stock { margin: 10px 0; padding: 10px; background: white; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>NSE Live Prices</h1>
+  <div id="stocks"></div>
+
+  <script>
+    const symbols = ['RELIANCE', 'TCS', 'INFY'];
+    const container = document.getElementById('stocks');
+
+    async function fetchPrices() {
+      container.innerHTML = '';
+      for (let symbol of symbols) {
+        try {
+          const res = await fetch(`https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=1&from=0&to=9999999999`);
+          const data = await res.json();
+          const prices = data.c;
+          const lastPrice = prices[prices.length - 1];
+          container.innerHTML += `<div class="stock"><strong>${symbol}</strong>: ₹${lastPrice}</div>`;
+        } catch (e) {
+          container.innerHTML += `<div class="stock">${symbol}: Failed to load</div>`;
+        }
+      }
+    }
+
+    fetchPrices();
+    setInterval(fetchPrices, 10000); // auto refresh every 10s
+  </script>
+</body>
 </html>
