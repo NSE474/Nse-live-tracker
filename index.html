@@ -1,102 +1,381 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NSE Live Tracker</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NSE 100+ Stock Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; max-width: 600px; margin: 0 auto; }
-    h1 { color: #333; text-align: center; }
-    .stock { 
-      margin: 10px 0; 
-      padding: 15px; 
-      background: white; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    :root {
+      --up-color: #0d9e0d;
+      --down-color: #e53935;
+      --neutral-color: #7f8c8d;
+    }
+    body {
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+    .header {
+      position: sticky;
+      top: 0;
+      background: white;
+      padding: 15px 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    h1 {
+      margin: 0;
+      color: #2c3e50;
+      font-size: 1.5rem;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #search {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .last-updated {
+      color: var(--neutral-color);
+      font-size: 0.8rem;
+      text-align: right;
+      margin-top: 5px;
+    }
+    .stocks-container {
+      margin-top: 15px;
+    }
+    .stock {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background: white;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
     }
-    .price-up { color: #0d9e0d; }
-    .price-down { color: #e53935; }
-    .loading { opacity: 0.6; }
-    .refresh-info { 
-      text-align: center; 
-      color: #666; 
-      font-size: 0.9em;
-      margin: 20px 0;
+    .stock:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .stock-name {
+      font-weight: 500;
+      color: #2c3e50;
+    }
+    .stock-symbol {
+      font-size: 0.8rem;
+      color: var(--neutral-color);
+      margin-top: 2px;
+    }
+    .price {
+      text-align: right;
+    }
+    .current-price {
+      font-weight: 600;
+    }
+    .price-up {
+      color: var(--up-color);
+    }
+    .price-down {
+      color: var(--down-color);
+    }
+    .price-change {
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+    .loading {
+      opacity: 0.6;
+    }
+    .error {
+      color: var(--down-color);
+    }
+    .refresh-btn {
+      background: #2c3e50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    @media (max-width: 600px) {
+      .stock {
+        padding: 10px 12px;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>NSE Live Prices</h1>
-  <div id="stocks"></div>
-  <div class="refresh-info">Auto-refreshing every 10 seconds...</div>
+  <div class="header">
+    <h1>NSE 100+ Stock Tracker</h1>
+    <div class="controls">
+      <input type="text" id="search" placeholder="Search stocks...">
+      <button class="refresh-btn" id="refreshBtn">Refresh</button>
+    </div>
+    <div class="last-updated" id="lastUpdated"></div>
+  </div>
+  <div class="stocks-container" id="stocksContainer"></div>
 
   <script>
-    const symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'BHARTIARTL'];
-    const container = document.getElementById('stocks');
-    let previousPrices = {};
+    // Nifty 100 stocks (can be expanded to 500+)
+    const symbols = [
+      'RELIANCE', 'TCS', 'HDFCBANK', 'INFY', 'HINDUNILVR', 'ICICIBANK', 
+      'KOTAKBANK', 'BHARTIARTL', 'LT', 'ITC', 'SBIN', 'BAJFINANCE', 
+      'HCLTECH', 'ASIANPAINT', 'MARUTI', 'TITAN', 'SUNPHARMA', 'AXISBANK',
+      'NESTLEIND', 'ULTRACEMCO', 'WIPRO', 'ONGC', 'JSWSTEEL', 'TATASTEEL',
+      'POWERGRID', 'NTPC', 'INDUSINDBK', 'COALINDIA', 'BPCL', 'IOC',
+      'GRASIM', 'HDFCLIFE', 'DRREDDY', 'SHREECEM', 'UPL', 'BAJAJFINSV',
+      'ADANIPORTS', 'TECHM', 'HEROMOTOCO', 'DIVISLAB', 'CIPLA', 'EICHERMOT',
+      'BRITANNIA', 'VEDL', 'HDFC', 'SBILIFE', 'GAIL', 'BAJAJ-AUTO', 'TATAMOTORS',
+      'M&M', 'ADANIENT', 'TATACONSUM', 'HAL', 'APOLLOHOSP', 'PAGEIND',
+      'BERGEPAINT', 'PIDILITIND', 'DABUR', 'HAVELLS', 'ICICIPRULI', 'BOSCHLTD',
+      'MARICO', 'INDIGO', 'BHARATFORG', 'MCDOWELL-N', 'SIEMENS', 'AUROPHARMA',
+      'TORNTPHARM', 'AMBUJACEM', 'NAUKRI', 'ACC', 'ASHOKLEY', 'BEL',
+      'PEL', 'LUPIN', 'BIOCON', 'GODREJCP', 'CADILAHC', 'COLPAL',
+      'DLF', 'SRF', 'ESCORTS', 'GLENMARK', 'GODREJPROP', 'IDEA', 'IGL',
+      'JINDALSTEL', 'LICHSGFIN', 'MANAPPURAM', 'MRF', 'OFSS', 'PETRONET',
+      'SAIL', 'SHREECEM', 'TORNTPOWER', 'TVSMOTOR', 'VOLTAS', 'ZEEL'
+    ];
 
+    // Configuration
+    const config = {
+      batchSize: 15,          // Number of stocks per batch
+      delayBetweenBatches: 1000, // 1 second between batches
+      fullRefreshInterval: 300000 // 5 minutes for full refresh
+    };
+
+    // State management
+    const state = {
+      stocksData: {},
+      visibleStocks: [],
+      currentBatch: 0,
+      isFetching: false,
+      lastUpdated: null
+    };
+
+    // DOM elements
+    const elements = {
+      container: document.getElementById('stocksContainer'),
+      search: document.getElementById('search'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      lastUpdated: document.getElementById('lastUpdated')
+    };
+
+    // Initialize
+    init();
+
+    function init() {
+      loadFromCache();
+      attachEventListeners();
+      fetchNextBatch();
+      startAutoRefresh();
+    }
+
+    function attachEventListeners() {
+      elements.search.addEventListener('input', filterStocks);
+      elements.refreshBtn.addEventListener('click', manualRefresh);
+    }
+
+    // Formatting functions
     function formatPrice(price) {
-      return price ? '₹' + price.toFixed(2) : 'N/A';
+      return price ? '₹' + price.toFixed(2) : '₹--';
     }
 
-    function getPriceChangeClass(current, previous) {
-      if (!previous || current === previous) return '';
-      return current > previous ? 'price-up' : 'price-down';
+    function formatChange(change, percent) {
+      if (change === undefined || percent === undefined) return '';
+      const sign = change >= 0 ? '+' : '';
+      return `${sign}${change.toFixed(2)} (${sign}${percent.toFixed(2)}%)`;
     }
 
+    function getChangeClass(change) {
+      if (change === undefined || change === 0) return '';
+      return change > 0 ? 'price-up' : 'price-down';
+    }
+
+    // Data fetching
     async function fetchStockData(symbol) {
       try {
-        // Note: This is just a placeholder - you'll need a proper NSE API
-        const res = await fetch(`https://priceapi.moneycontrol.com/techCharts/indianMarket/stock/history?symbol=${symbol}&resolution=1&from=0&to=9999999999`);
-        if (!res.ok) throw new Error('API request failed');
+        // Using proxy to avoid CORS (replace with your backend in production)
+        const proxyUrl = 'https://api.allorigins.win/get?url=';
+        const nseUrl = encodeURIComponent(
+          `https://www.nseindia.com/api/quote-equity?symbol=${symbol}`
+        );
         
-        const data = await res.json();
-        const prices = data.c;
-        const lastPrice = prices[prices.length - 1];
+        const response = await fetch(proxyUrl + nseUrl);
+        if (!response.ok) throw new Error('Network error');
+        
+        const data = await response.json();
+        const stockData = JSON.parse(data.contents);
+        
+        if (!stockData.priceInfo) throw new Error('No price data');
+        
+        const priceInfo = stockData.priceInfo;
+        const lastPrice = priceInfo.lastPrice;
+        const prevClose = priceInfo.previousClose;
+        const change = lastPrice - prevClose;
+        const changePercent = (change / prevClose) * 100;
         
         return {
           symbol,
+          name: stockData.info?.companyName || symbol,
           price: lastPrice,
-          change: previousPrices[symbol] ? lastPrice - previousPrices[symbol] : 0,
-          changePercent: previousPrices[symbol] ? ((lastPrice - previousPrices[symbol]) / previousPrices[symbol] * 100) : 0
+          change,
+          changePercent,
+          timestamp: Date.now()
         };
-      } catch (e) {
-        console.error(`Error fetching ${symbol}:`, e);
-        return { symbol, error: true };
+      } catch (error) {
+        console.error(`Error fetching ${symbol}:`, error);
+        return {
+          symbol,
+          name: symbol,
+          error: true,
+          errorMessage: error.message
+        };
       }
     }
 
-    async function fetchPrices() {
-      const stocks = await Promise.all(symbols.map(fetchStockData));
+    // Batch processing
+    async function fetchNextBatch() {
+      if (state.isFetching) return;
+      state.isFetching = true;
       
-      container.innerHTML = stocks.map(stock => {
-        if (stock.error) {
-          return `<div class="stock"><strong>${stock.symbol}</strong>: Error loading data</div>`;
-        }
+      const batchStart = state.currentBatch * config.batchSize;
+      const batchEnd = batchStart + config.batchSize;
+      const batchSymbols = symbols.slice(batchStart, batchEnd);
+      
+      if (batchSymbols.length === 0) {
+        // Reset when all batches complete
+        state.currentBatch = 0;
+        state.isFetching = false;
+        state.lastUpdated = Date.now();
+        updateLastUpdatedDisplay();
+        saveToCache();
+        return;
+      }
+
+      try {
+        const batchResults = await Promise.all(
+          batchSymbols.map(symbol => fetchStockData(symbol))
+        );
+
+        // Update state
+        batchResults.forEach(stock => {
+          state.stocksData[stock.symbol] = stock;
+        });
+
+        // Update UI
+        filterStocks();
         
-        const changeClass = getPriceChangeClass(stock.price, previousPrices[stock.symbol]);
-        previousPrices[stock.symbol] = stock.price;
-        
-        return `
-          <div class="stock">
-            <strong>${stock.symbol}</strong>
-            <div class="${changeClass}">
-              ${formatPrice(stock.price)}
-              ${stock.change ? ` (${stock.change > 0 ? '+' : ''}${stock.change.toFixed(2)})` : ''}
-              ${stock.changePercent ? ` (${stock.changePercent > 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%)` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
+        // Process next batch after delay
+        state.currentBatch++;
+        setTimeout(() => {
+          state.isFetching = false;
+          fetchNextBatch();
+        }, config.delayBetweenBatches);
+      } catch (error) {
+        console.error('Batch error:', error);
+        state.isFetching = false;
+      }
     }
 
-    // Initial load
-    fetchPrices();
-    // Auto-refresh
-    setInterval(fetchPrices, 10000);
+    // UI rendering
+    function filterStocks() {
+      const searchTerm = elements.search.value.toLowerCase();
+      state.visibleStocks = Object.values(state.stocksData)
+        .filter(stock => 
+          stock.symbol.toLowerCase().includes(searchTerm) || 
+          (stock.name && stock.name.toLowerCase().includes(searchTerm))
+        .sort((a, b) => a.symbol.localeCompare(b.symbol));
+      
+      renderStocks();
+    }
+
+    function renderStocks() {
+      elements.container.innerHTML = state.visibleStocks
+        .map(stock => {
+          if (stock.error) {
+            return `
+              <div class="stock error">
+                <div>
+                  <div class="stock-name">${stock.name}</div>
+                  <div class="stock-symbol">${stock.symbol}</div>
+                </div>
+                <div>Failed to load</div>
+              </div>
+            `;
+          }
+          
+          const changeClass = getChangeClass(stock.change);
+          
+          return `
+            <div class="stock">
+              <div>
+                <div class="stock-name">${stock.name}</div>
+                <div class="stock-symbol">${stock.symbol}</div>
+              </div>
+              <div class="price">
+                <div class="current-price ${changeClass}">
+                  ${formatPrice(stock.price)}
+                </div>
+                <div class="price-change ${changeClass}">
+                  ${formatChange(stock.change, stock.changePercent)}
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    function updateLastUpdatedDisplay() {
+      if (!state.lastUpdated) return;
+      const date = new Date(state.lastUpdated);
+      elements.lastUpdated.textContent = `Last updated: ${date.toLocaleTimeString()}`;
+    }
+
+    // Cache management
+    function saveToCache() {
+      localStorage.setItem('nseStocksCache', JSON.stringify({
+        data: state.stocksData,
+        timestamp: Date.now()
+      }));
+    }
+
+    function loadFromCache() {
+      const cache = localStorage.getItem('nseStocksCache');
+      if (!cache) return;
+      
+      try {
+        const parsed = JSON.parse(cache);
+        // Only use cache if less than 1 hour old
+        if (Date.now() - parsed.timestamp < 3600000) {
+          state.stocksData = parsed.data;
+          filterStocks();
+        }
+      } catch (e) {
+        console.error('Cache load failed', e);
+      }
+    }
+
+    // Refresh controls
+    function manualRefresh() {
+      state.currentBatch = 0;
+      fetchNextBatch();
+    }
+
+    function startAutoRefresh() {
+      // Full refresh all stocks periodically
+      setInterval(() => {
+        state.currentBatch = 0;
+        fetchNextBatch();
+      }, config.fullRefreshInterval);
+    }
   </script>
 </body>
 </html>
